@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define rows 10
-#define columns 10
+int rows, columns;
 
 void printBoard(char** board);
 void playGame(int x, int y, char** board);
@@ -15,6 +14,13 @@ bool placeFirstShipTile(int x, int y, char** board);
 bool isClearBoard(char** board);
 
 int main() {
+
+    //Start Game with user board sizes
+    printf("Enter the number of rows and columns: ");
+    if (scanf("%d %d", &rows, &columns) != 2) {
+        return 1;
+    }
+
     char** board = malloc(rows * sizeof(char*));
 
     for(int i = 0; i < rows; i++) {
@@ -63,7 +69,7 @@ int main() {
                 prevY = y;
             }
             else {
-                printf("Invalid position! Must be adjacent and in a straight line.\n");
+                printf("Invalid position, ship must be in a straight line.\n");
             }
         }
     }
@@ -82,7 +88,7 @@ int main() {
 
 bool inputCoordinates(int* x, int* y) {
     while (1) {
-        printf("\nEnter X and Y coordinates (0-9) or -1 -1 to finish: ");
+        printf("\nEnter X (0-%d) and Y (0-%d) or -1 -1 to finish: ", columns-1, rows-1);
         
         if (scanf("%d %d", x, y) != 2) {
             printf("Invalid input. Please enter numbers.\n");
