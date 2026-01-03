@@ -2,72 +2,81 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define numOfBoats 5
+#define rows 10
+#define columns 10
 
 void printBoard(char** board);
 void playGame(int x, int y, char** board);
 bool inputCoordinates(int* x, int* y);
 bool areValidXY(int x, int y);
 bool endGame(int x, int y);
-bool isValidPos(int x, int y, char ** board);
+bool isValidPos(int x, int y, int prevX, int prevY, char* axis, char ** board);
 bool placeFirstShipTile(int x, int y, char** board);
 bool isClearBoard(char** board);
 
 int main() {
-    char** board = malloc(10 * sizeof(char*));
+    char** board = malloc(rows * sizeof(char*));
 
-    for(int i = 0; i < 10; i++) {
-        board[i] = calloc(10, sizeof(char)); 
-        
-        for(int j = 0; j < 10; j++) board[i][j] = '.';
+    for(int i = 0; i < rows; i++) {
+        board[i] = calloc(columns, sizeof(char)); 
+        for(int j = 0; j < columns; j++) board[i][j] = '.';
     }
 
     printf("Place your ships\n");
 
-    int x, y;
+    int x, y, prevX, prevY;
+    char axis = '-';
     bool isFirstPlacement = true;
-    for(int i = 0; i < numOfBoats; i++){
-        printf("Ship %d: \n", (i+1));
+    int newShip;
+
+    while(1){
+        printf("\nEnter 1 to start a new ship or 0 to finish: ");
+        if (scanf("%d", &newShip) != 1) {
+            while(getchar() != '\n');
+            continue;
+        }
+        
+        if(newShip != 1) break;
+
+        isFirstPlacement = true;
+        axis = '-';
 
         while(1){
             if (!inputCoordinates(&x, &y)){
-                break;
+                break; 
             }
 
             if(isFirstPlacement){
-                if(placeFirstShipTile(x,y,board)){
+                if(placeFirstShipTile(x, y, board)){
                     isFirstPlacement = false;
+                    prevX = x;
+                    prevY = y;
                 }
                 continue;
             }
 
-            if (isValidPos(x,y, board)){
-                if(board[y][x] == 'X'){
-                    printf("Ships cannot overlap");
-                    continue;
-                }
-
+            if (isValidPos(x, y, prevX, prevY, &axis, board)){
                 board[y][x] = 'X';
                 printBoard(board);
+
+                prevX = x;
+                prevY = y;
             }
-            else{
-                printf("Ship hulls must be connected vertically or horizontally");
+            else {
+                printf("Invalid position! Must be adjacent and in a straight line.\n");
             }
         }
-        isFirstPlacement = true;
     }
 
     // Game Portion
     printf("\nNow try to destroy the ships!\n");
-    playGame(x,y,board);
+    playGame(x, y, board);
 
-    for(int i = 0; i < 10; i++) {
-        free(board[i]);
-    }
+    // Memory Cleanup
+    for(int i = 0; i < rows; i++) free(board[i]);
     free(board);
 
     printf("\nGame exited.\n\n");
-
     return 0;
 }
 
@@ -77,7 +86,6 @@ bool inputCoordinates(int* x, int* y) {
         
         if (scanf("%d %d", x, y) != 2) {
             printf("Invalid input. Please enter numbers.\n");
-            while (getchar() != '\n'); 
             continue;
         }
 
@@ -95,14 +103,41 @@ bool inputCoordinates(int* x, int* y) {
 }
 
 bool areValidXY(int x, int y){
-        if (x > 9 || x < 0 || y < 0 || y > 9) {
+        if (x > (columns-1) || x < 0 || y < 0 || y > (rows-1)) {
             return false;
         }
         return true;
 }
 
-bool isValidPos(int x, int y, char** board){
-    return ((x > 0 && board[y][x-1] == 'X') || (y>0 && board[y-1][x] == 'X') || (y<9 && board[y+1][x] == 'X') || (x<9 && board[y][x+1] == 'X'));
+bool isValidPos(int x, int y, int prevX, int prevY, char* axis, char** board) {
+    if (board[y][x] == 'X') {
+        printf("This spot is already taken!\n");
+        return false;
+    }
+
+    bool isAdjacentX = (y == prevY) && (x == prevX + 1 || x == prevX - 1);
+    bool isAdjacentY = (x == prevX) && (y == prevY + 1 || y == prevY - 1);
+
+    if (*axis == '-') {
+        if (isAdjacentX) {
+            *axis = 'x';
+            return true;
+        }
+        if (isAdjacentY) {
+            *axis = 'y';
+            return true;
+        }
+    } else {
+        if (*axis == 'x' && isAdjacentX) {
+            return true;
+        }
+        if (*axis == 'y' && isAdjacentY) {
+            return true;
+        }
+    }
+
+    printf("Invalid placement. Ships must be in a straight line and connected.\n");
+    return false;
 }
 
 bool endGame(int x, int y){
@@ -113,8 +148,8 @@ bool endGame(int x, int y){
 }
 
 void printBoard(char** board) {
-    for(int i = 0; i < 10; i++) {
-        for(int j = 0; j < 10; j++) {
+    for(int i = 0; i < rows; i++) {
+        for(int j = 0; j < columns; j++) {
             printf("%c  ", board[i][j]);
         }
         printf("\n");
@@ -132,8 +167,8 @@ bool placeFirstShipTile(int x, int y, char** board){
 }
 
 bool isClearBoard(char** board){
-    for(int y = 0; y < 10; y++){
-        for(int x = 0; x < 10; x++){
+    for(int y = 0; y < rows; y++){
+        for(int x = 0; x < columns; x++){
             if(board[y][x] == 'X'){
                 return false;
             }
