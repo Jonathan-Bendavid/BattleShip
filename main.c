@@ -2,9 +2,19 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+typedef struct ShipNode {
+    char* name; 
+    int* posArray; 
+    int length;
+    struct ShipNode* next;
+} ShipNode;
+
+ShipNode* headShip = NULL;
+ShipNode* pointer = NULL;
 int rows, columns, shipCount = 0;
 char** shipNames = NULL; // [name, name2]...
 int** shipPositions = NULL; // [ship] -> [[0,1,1,1]]...
+int* shipCapacities = NULL;
 int* shipLengths = NULL;
 
 void printBoard(char** board);
@@ -40,6 +50,7 @@ int main() {
     bool isFirstPlacement = true;
     int newShip;
     int tileCount;
+
     while(1){
         printf("\nEnter 1 to start a new ship or 0 to finish: ");
         if (scanf("%d", &newShip) != 1) {
@@ -68,6 +79,11 @@ int main() {
         
         shipLengths = realloc(shipLengths, shipCount * sizeof(int));
 
+        shipCapacities = realloc(shipCapacities, shipCount * sizeof(int));
+
+        shipCapacities[shipCount-1] = 4; 
+        shipPositions[shipCount-1] = malloc(shipCapacities[shipCount-1] * 2 * sizeof(int));
+
         shipNames[shipCount-1] = malloc(50 * sizeof(char)); 
 
         int c;
@@ -75,7 +91,7 @@ int main() {
 
         printf("Enter ship name: ");
         fgets(shipNames[shipCount-1], 50, stdin);
-        
+
         int i = 0;
         while (shipNames[shipCount-1][i] != '\0') {
             if (shipNames[shipCount-1][i] == '\n') {
@@ -109,9 +125,12 @@ int main() {
 
             if (isValidPos(x, y, &minX, &maxX, &minY, &maxY, &axis, board)){
                 tileCount++;
-                int* temp = realloc(shipPositions[shipCount-1], tileCount * 2 * sizeof(int));
-                if(temp)
-                    shipPositions[shipCount-1] = temp;
+                if (tileCount > shipCapacities[shipCount-1]) {
+                    shipCapacities[shipCount-1] *= 2;
+                    int* temp = realloc(shipPositions[shipCount-1], shipCapacities[shipCount-1] * 2 * sizeof(int));
+                    if (temp)
+                        shipPositions[shipCount-1] = temp;
+                }
                 
                 shipPositions[shipCount-1][(tileCount-1) * 2] = x;
                 shipPositions[shipCount-1][((tileCount-1) * 2) + 1] = y;
@@ -122,6 +141,21 @@ int main() {
                 printf("Invalid position, ship must be in a straight line.\n");
             }
         }
+
+        ShipNode* newShip = malloc(sizeof(ShipNode));
+        newShip->name = shipNames[shipCount-1];
+        newShip->posArray = shipPositions[shipCount-1];
+        newShip->length = tileCount;
+        newShip->next = NULL;
+
+        if (headShip == NULL) {
+            headShip = newShip;
+            pointer = headShip;
+        } else {
+            pointer->next = newShip;
+            pointer = newShip;
+        }
+        
         shipLengths[shipCount-1] = tileCount;
     }
 
@@ -139,10 +173,18 @@ int main() {
         free(shipPositions[i]);
     }
 
+    ShipNode* tempNode;
+    while (headShip != NULL) {
+        tempNode = headShip;
+        headShip = headShip->next;
+        free(tempNode); 
+    }
+    
     free(shipNames);
     free(shipPositions);
     free(shipLengths);
-
+    free(shipCapacities); 
+    
     printf("\nGame exited.\n\n");
     return 0;
 }
@@ -252,7 +294,7 @@ void playGame(int x, int y, char** board){
         if (!inputCoordinates(&x, &y)){
             printf("\nYou Lose\n");
             break;
-        }
+        } 
 
         if(board[y][x] == 'X'){
             printf("\nYou have successfully hit a ship\n");
@@ -297,24 +339,22 @@ void removeDestroyedTile(int* shipPos, int idx) {
 }
 
 void destroyTile(int x, int y) {
-    for (int i = 0; i < shipCount; i++) {
-        bool shipSunk = true;
-        bool hitInThisShip = false;
-
-        for (int j = 0; j < shipLengths[i] * 2; j += 2) {
-            if (shipPositions[i][j] == x && shipPositions[i][j+1] == y) {
-                removeDestroyedTile(shipPositions[i], j);
-                hitInThisShip = true;
+    ShipNode* current = headShip;
+    while (current != NULL) {
+        bool hit = false;
+        bool sunk = true;
+        
+        for (int j = 0; j < current->length * 2; j += 2) {
+            if (current->posArray[j] == x && current->posArray[j+1] == y) {
+                current->posArray[j] = -1;
+                current->posArray[j+1] = -1;
+                hit = true;
             }
-
-            if (shipPositions[i][j] != -1) {
-                shipSunk = false;
-            }
+            if (current->posArray[j] != -1) sunk = false;
         }
 
-        if (hitInThisShip && shipSunk) {
-            printf("Ship: %s destroyed!\n", shipNames[i]);
-        }
-        if (hitInThisShip) break; 
+        if (hit && sunk) printf("Ship: %s destroyed!\n", current->name);
+        if (hit) break;
+        current = current->next;
     }
 }
